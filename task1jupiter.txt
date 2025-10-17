@@ -1,0 +1,53 @@
+import pyodbc
+from datetime import datetime
+
+def add_service_booking(service_id, registration, dropoff_date, dropoff_time, work_required, mileage, next_service):
+    try:
+        conn = pyodbc.connect(
+            "Driver={ODBC Driver 17 for SQL Server};"
+            "Server=localhost\\SQLEXPRESS;"
+            "Database=CarServiceDB;"
+            "Trusted_Connection=yes;"
+        )
+        cursor = conn.cursor()
+
+        # Check car existence and service ID uniqueness
+        if not cursor.execute("SELECT 1 FROM Car WHERE registration = ?", registration).fetchone():
+            print(f"No car with registration '{registration}'.")
+            return
+        if cursor.execute("SELECT 1 FROM Service WHERE service_id = ?", service_id).fetchone():
+            print(f"Service ID '{service_id}' already exists.")
+            return
+
+        # Insert the service record
+        cursor.execute(
+            """
+            INSERT INTO Service (service_id, registration, dropoff_date, dropoff_time, work_required, mileage, next_service)
+            VALUES (?, ?, ?, ?, ?, ?, ?);
+            """,
+            service_id,
+            registration,
+            dropoff_date.strftime('%Y-%m-%d'),
+            dropoff_time.strftime('%H:%M:%S'),
+            work_required,
+            mileage,
+            next_service.strftime('%Y-%m-%d')
+        )
+        conn.commit()
+        print(f"Service booking {service_id} added.")
+
+    except Exception as e:
+        print(f"Error: {e}")
+    finally:
+        conn.close()
+
+# Example usage
+add_service_booking(
+    "S2006-137", 
+    "T779 OLI", 
+    datetime.strptime("2024-12-06", "%Y-%m-%d"), 
+    datetime.strptime("10:30:00", "%H:%M:%S"), 
+    "Annul Service", 
+    95100, 
+    datetime.strptime("2025-06-02", "%Y-%m-%d")
+)

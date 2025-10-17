@@ -1,0 +1,56 @@
+import pyodbc
+
+def list_customers_next_service(start_date, end_date):
+    try:
+        # Connect to the database
+        conn = pyodbc.connect(
+            "Driver={ODBC Driver 17 for SQL Server};"
+            "Server=localhost\\SQLEXPRESS;"
+            "Database=CarServiceDB;"
+            "Trusted_Connection=yes;"
+        )
+        cursor = conn.cursor()
+
+        # Query to get customer details and car info with next service between two dates
+        query = """
+        SELECT 
+            c.cust_name,
+            c.cust_email,
+            car.make,
+            car.registration,
+            s.next_service
+        FROM 
+            Customer c
+        JOIN 
+            Car car ON c.customer_id = car.customer_id
+        JOIN 
+            Service s ON car.registration = s.registration
+        WHERE 
+            s.next_service BETWEEN ? AND ?
+        ORDER BY 
+            s.next_service;
+        """
+
+        # Run the query with the given dates
+        cursor.execute(query, start_date, end_date)
+        results = cursor.fetchall()
+
+        # Display results
+        if results:
+            print(f"Customers with cars needing service from {start_date} to {end_date}:\n")
+            for row in results:
+                print(f"Name: {row.cust_name}")
+                print(f"Email: {row.cust_email}")
+                print(f"Car: {row.make} (Reg: {row.registration})")
+                print(f"Next Service: {row.next_service}")
+                print("-" * 40)
+        else:
+            print(f"No cars scheduled for service between {start_date} and {end_date}.")
+
+    except Exception as e:
+        print(f"Something went wrong: {e}")
+    finally:
+        conn.close()
+
+# Example usage
+list_customers_next_service("2024-12-01", "2024-12-31")

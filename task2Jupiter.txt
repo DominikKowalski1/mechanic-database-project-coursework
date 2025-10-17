@@ -1,0 +1,49 @@
+import pyodbc
+
+def get_mechanics_and_job_counts(registration, dropoff_date):
+    try:
+        # Connect to the database
+        conn = pyodbc.connect(
+            "Driver={ODBC Driver 17 for SQL Server};"
+            "Server=localhost\\SQLEXPRESS;"
+            "Database=CarServiceDB;"
+            "Trusted_Connection=yes;"
+        )
+        cursor = conn.cursor()
+
+        # Query to get mechanics and their job counts on the drop-off date
+        query = """
+        SELECT 
+            m.emp_name AS mechanic_name,
+            COUNT(sm.service_id) AS job_count
+        FROM 
+            Service s
+        JOIN 
+            Service_Mechanic sm ON s.service_id = sm.service_id
+        JOIN 
+            Mechanic m ON sm.employee_id = m.employee_id
+        WHERE 
+            s.registration = ? AND s.dropoff_date = ?
+        GROUP BY 
+            m.emp_name
+        HAVING 
+            COUNT(sm.service_id) > 0;
+        """
+        # Execute and fetch results
+        cursor.execute(query, registration, dropoff_date)
+        results = cursor.fetchall()
+
+        # Display results
+        if results:
+            for row in results:
+                print(f"Mechanic: {row.mechanic_name}, Jobs: {row.job_count}")
+        else:
+            print(f"No mechanics found with jobs on {dropoff_date} for car {registration}.")
+
+    except Exception as e:
+        print(f"Error: {e}")
+    finally:
+        conn.close()
+
+# Example usage
+get_mechanics_and_job_counts("T779 OLI", "2020-06-23")

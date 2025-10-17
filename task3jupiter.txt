@@ -1,0 +1,49 @@
+import pyodbc
+
+def get_mechanics_service_time(start_date, end_date):
+    try:
+        # Connect to the database
+        conn = pyodbc.connect(
+            "Driver={ODBC Driver 17 for SQL Server};"
+            "Server=localhost\\SQLEXPRESS;"
+            "Database=CarServiceDB;"
+            "Trusted_Connection=yes;"
+        )
+        cursor = conn.cursor()
+
+        # Query to calculate total service time per mechanic
+        query = """
+        SELECT 
+            m.emp_name AS mechanic_name,
+            SUM(DATEDIFF(MINUTE, '00:00:00', sm.time_spent)) AS total_minutes
+        FROM 
+            Service s
+        JOIN 
+            Service_Mechanic sm ON s.service_id = sm.service_id
+        JOIN 
+            Mechanic m ON sm.employee_id = m.employee_id
+        WHERE 
+            s.dropoff_date BETWEEN ? AND ?
+        GROUP BY 
+            m.emp_name
+        HAVING 
+            SUM(DATEDIFF(MINUTE, '00:00:00', sm.time_spent)) > 0;
+        """
+        cursor.execute(query, start_date, end_date)
+        results = cursor.fetchall()
+
+        # Display results
+        for row in results:
+            hours, minutes = divmod(row.total_minutes, 60)
+            print(f"Mechanic: {row.mechanic_name}, Time: {hours} hours and {minutes} minutes")
+
+        if not results:
+            print(f"No service time records found between {start_date} and {end_date}.")
+
+    except Exception as e:
+        print(f"Error: {e}")
+    finally:
+        conn.close()
+
+# Example usage
+get_mechanics_service_time("2024-12-01", "2024-12-05")

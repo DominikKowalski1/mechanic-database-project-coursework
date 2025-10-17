@@ -1,0 +1,73 @@
+import pyodbc
+
+def mark_mechanic_unavailable_and_fetch_services(employee_id, start_date, end_date):
+    try:
+        # Connect to the database
+        conn = pyodbc.connect(
+            "Driver={ODBC Driver 17 for SQL Server};"
+            "Server=localhost\\SQLEXPRESS;"
+            "Database=CarServiceDB;"
+            "Trusted_Connection=yes;"
+        )
+        cursor = conn.cursor()
+
+        print(f"Marking mechanic {employee_id} as unavailable from {start_date} to {end_date}...\n")
+        
+        # Insert mechanic unavailability into the database
+        insert_query = """
+        INSERT INTO Mechanic_Unavailability (employee_id, start_date, end_date)
+        VALUES (?, ?, ?);
+        """
+        cursor.execute(insert_query, employee_id, start_date, end_date)
+        conn.commit()
+        print(f"Mechanic {employee_id} marked as unavailable.\n")
+
+        # Fetch services scheduled for the mechanic during the unavailable period
+        print("Fetching services the mechanic is scheduled for during the unavailability period...\n")
+        fetch_query = """
+        SELECT 
+            s.service_id,
+            s.registration,
+            s.dropoff_date,
+            s.dropoff_time,
+            sm.time_spent
+        FROM 
+            Service_Mechanic sm
+        JOIN 
+            Service s ON sm.service_id = s.service_id
+        WHERE 
+            sm.employee_id = ? AND s.dropoff_date BETWEEN ? AND ?
+        ORDER BY 
+            s.dropoff_date, s.dropoff_time;
+        """
+        cursor.execute(fetch_query, employee_id, start_date, end_date)
+        services = cursor.fetchall()
+
+        # Display the results
+        if services:
+            print(f"Services involving mechanic {employee_id} during their unavailability period:\n")
+            for service in services:
+                print(f"Service ID: {service.service_id}")
+                print(f"Car Registration: {service.registration}")
+                print(f"Dropoff Date: {service.dropoff_date}")
+                print(f"Dropoff Time: {service.dropoff_time}")
+                print(f"Time Spent: {service.time_spent}")
+                print("-" * 40)
+        else:
+            print(f"No services found involving mechanic {employee_id} during their unavailability period.")
+
+    except pyodbc.Error as db_error:
+        print(f"Database error occurred: {db_error}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+    finally:
+        conn.close()
+        print("Database connection closed.")
+
+# Example Inputs for employee_id E4470
+employee_id = "E4470"  # Mechanic's employee ID
+start_date = "2024-12-01"  # Start date of unavailability (YYYY-MM-DD)
+end_date = "2024-12-05"    # End date of unavailability (YYYY-MM-DD)
+
+# Call the function
+mark_mechanic_unavailable_and_fetch_services(employee_id, start_date, end_date)
